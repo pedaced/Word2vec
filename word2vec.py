@@ -14,7 +14,7 @@ corpus = api.load("text8")  # iterable of lists of tokens
 
 # flatten into a single list of tokens
 tokens = [word for sentence in corpus for word in sentence]
-tokens = tokens[:1_000_000]
+tokens = tokens[:100000]
 print(f"Number of tokens: {len(tokens)}")
 
 # -----------------------
