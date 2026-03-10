@@ -1,74 +1,275 @@
-# Word2Vec Skip-Gram with Negative Sampling (SGNS) Implementation
+# Word2Vec (Skip-Gram with Negative Sampling) – Pure NumPy Implementation
 
-## Overview
+This repository contains a **from-scratch implementation of Word2Vec** using **pure NumPy**.  
+No deep learning frameworks (PyTorch, TensorFlow, etc.) are used.
 
-This project implements a **Skip-Gram Word2Vec model with Negative Sampling (SGNS)** in **pure NumPy**. 
+The goal of this project is to implement the **core training loop of Word2Vec**, including:
 
-We chose SGNS because it is **the most common and efficient approach** for learning word embeddings from large corpora. SGNS captures semantic relationships between words by training a model to **predict context words given a center word**, while using **negative sampling** to efficiently approximate the softmax over a large vocabulary.
+- forward pass
+- loss computation
+- gradient derivation
+- parameter updates
 
----
-
-## Project Pipeline
-
-The code is organized into several key steps, which together form the full SGNS training pipeline:
-
-### 1. Load and Preprocess Data
-
-- The **Gensim `text8` dataset** is used as the corpus. This is a clean, preprocessed text from Wikipedia.
-- Tokens are extracted and mapped to integer IDs.
-- Vocabulary and token counts are built to track word frequencies.
-
-### 2. Generate Skip-Gram Pairs
-
-- For each center word, a **context window** is defined (e.g., 1–2 words on each side).
-- **Center-context pairs** are generated for all tokens in the corpus.
-- This forms the positive training examples for the SGNS model.
-
-### 3. Build Negative Sampling Distribution
-
-- Word frequencies are raised to the **0.75 power** (following Mikolov et al.).
-- This creates a **noise distribution** from which negative samples are drawn.
-- Negative sampling helps the model distinguish true context words from random words efficiently.
-
-### 4. Define the SGNS Model
-
-- The `SGNSModel` class contains:
-  - Two embedding matrices: one for **center words** (`W`) and one for **context words** (`U`).
-  - **Forward pass** to compute probabilities using the sigmoid of dot products.
-  - **Loss computation** using the SGNS loss function.
-  - **Backward pass** to compute gradients for the embeddings.
-  - **Parameter update** using stochastic gradient descent (SGD).
-
-### 5. Training Loop
-
-- For each epoch:
-  - Loop through all center-context pairs.
-  - Sample `k` negative words for each positive pair.
-  - Perform a **train step** to update embeddings.
-  - Track the **average loss** to monitor training progress.
-- After training, the `W` matrix contains the learned **word embeddings**.
-
-### 6. Utility Functions
-
-- **Cosine similarity**: measure similarity between two embeddings.
-- **Most similar words**: find top-N words closest to a given word in embedding space.
-- Optional: word analogy tasks can be performed using vector arithmetic.
+The model implemented is **Skip-Gram with Negative Sampling (SGNS)**, one of the most commonly used Word2Vec variants.
 
 ---
 
-## Notes
+# 1. Overview
 
-- Training on the **full text8 dataset** is computationally heavy on CPU. For experiments, a **subset of tokens** can be used.
-- Smaller datasets and window sizes may result in embeddings that do not capture meaningful semantics.
-- Increasing **corpus size, window size, embedding dimensions, negative samples, and epochs** improves embedding quality.
+Word2Vec learns **dense vector representations of words** such that words appearing in similar contexts have similar embeddings.
+
+For example, embeddings should capture relationships like:
+
+```
+king - man + woman ≈ queen
+```
+
+or semantic similarity:
+
+```
+king ≈ queen
+car ≈ vehicle
+```
+
+This implementation closely follows the algorithm introduced by:
+
+**Tomas Mikolov et al. (2013)**  
+*Efficient Estimation of Word Representations in Vector Space*
 
 ---
 
-## Example Usage
+# 2. Skip-Gram with Negative Sampling
+
+The model predicts **context words given a center word**.
+
+For a center word \(w_c\) and context word \(w_o\), the objective is:
+
+\[
+\log \sigma(u_o^T v_c) + \sum_{k=1}^{K} \log \sigma(-u_k^T v_c)
+\]
+
+Where:
+
+- \(v_c\) = center word embedding
+- \(u_o\) = context embedding
+- \(u_k\) = embeddings of negative samples
+- \(K\) = number of negative samples
+- \(\sigma\) = sigmoid function
+
+Negative samples are drawn from a **noise distribution proportional to word frequency^0.75**, as proposed in the original paper.
+
+Two embedding matrices are learned:
+
+```
+W : center word embeddings   (vocab_size × embedding_dim)
+U : context word embeddings  (vocab_size × embedding_dim)
+```
+
+Training updates both matrices using **stochastic gradient descent**.
+
+---
+
+# 3. Dataset
+
+The model is trained on the **text8 dataset**, loaded using:
+
+```
+gensim.downloader
+```
+
+For faster training during experimentation, the corpus is truncated to:
+
+```
+1,000,000 tokens
+```
+
+This provides a good balance between:
+
+- meaningful word statistics
+- reasonable CPU training time
+
+---
+
+# 4. Training Configuration
+
+| Parameter | Value |
+|--------|------|
+| Model | Skip-Gram |
+| Window size | 2 |
+| Embedding dimension | 50 |
+| Negative samples | 3 |
+| Learning rate | 0.05 |
+| Epochs | 3 |
+
+---
+
+# 5. Project Structure
+
+```
+.
+├── train_word2vec.py
+└── README.md
+```
+
+---
+
+# 6. Installation
+
+Install the required dependencies:
+
+```
+pip install numpy gensim
+```
+
+---
+
+# 7. Running the Training
+
+Run the training script:
+
+```
+python train_word2vec.py
+```
+
+The script will:
+
+1. Load the **text8 dataset**
+2. Build the **vocabulary**
+3. Generate **skip-gram training pairs**
+4. Initialize embedding matrices
+5. Train the model using **negative sampling**
+6. Print training progress and loss
+
+Example output:
+
+```
+Processed 100000 pairs, avg loss: 2.13
+Processed 200000 pairs, avg loss: 2.05
+Epoch 1/3 Avg Loss: 1.98
+```
+
+---
+
+# 8. Evaluating the Learned Embeddings
+
+After training, the quality of the embeddings can be evaluated using **cosine similarity**.
+
+Two common intrinsic evaluation methods are implemented:
+
+### 1. Nearest Neighbor Search
+
+Find words with similar embeddings.
+
+Example:
+
+```
+Most similar words to 'king':
+queen
+prince
+monarch
+throne
+emperor
+```
+
+### 2. Word Analogies
+
+Classic analogy test:
+
+```
+king - man + woman ≈ queen
+```
+
+---
+
+# 9. Evaluation Script
+
+The following utility functions can be used to evaluate embeddings.
 
 ```python
-# Find words most similar to 'king'
-most_similar("king", model.W, vocab, top_n=5)
+import numpy as np
 
-# Find words most similar to 'queen'
-most_similar("queen", model.W, vocab, top_n=5)
+
+def cosine_similarity(vec1, vec2):
+    return np.dot(vec1, vec2) / (
+        np.linalg.norm(vec1) * np.linalg.norm(vec2)
+    )
+
+
+def most_similar(word, W, vocab, id_to_word, top_n=5):
+    """
+    Returns the top-N most similar words based on cosine similarity.
+    """
+
+    if word not in vocab:
+        print(f"{word} not in vocabulary")
+        return []
+
+    idx = vocab[word]
+    vec = W[idx]
+
+    sims = W @ vec
+    norms = np.linalg.norm(W, axis=1) * np.linalg.norm(vec)
+    sims = sims / norms
+
+    top_idx = np.argsort(sims)[::-1][1:top_n+1]
+
+    return [(id_to_word[i], sims[i]) for i in top_idx]
+
+
+def analogy(a, b, c, W, vocab, id_to_word, top_n=5):
+    """
+    Solve analogy: a - b + c = ?
+    """
+
+    for word in [a, b, c]:
+        if word not in vocab:
+            print(f"{word} not in vocabulary")
+            return []
+
+    vec = W[vocab[a]] - W[vocab[b]] + W[vocab[c]]
+
+    sims = W @ vec
+    norms = np.linalg.norm(W, axis=1) * np.linalg.norm(vec)
+    sims = sims / norms
+
+    top_idx = np.argsort(sims)[::-1][:top_n]
+
+    return [(id_to_word[i], sims[i]) for i in top_idx]
+```
+
+Example usage:
+
+```python
+print("Most similar to 'king':")
+print(most_similar("king", model.W, vocab, id_to_word))
+
+print("Analogy: king - man + woman")
+print(analogy("king", "man", "woman", model.W, vocab, id_to_word))
+```
+
+---
+
+# 10. Possible Improvements
+
+This implementation focuses on **clarity and understanding**, rather than maximum efficiency.
+
+Possible improvements include:
+
+- minibatch training
+- vectorized updates
+- subsampling of frequent words
+- hierarchical softmax
+- CBOW variant
+- GPU acceleration
+
+These techniques are used in optimized implementations such as **Gensim Word2Vec**.
+
+---
+
+# 11. References
+
+Mikolov, T., Chen, K., Corrado, G., & Dean, J. (2013)
+
+Efficient Estimation of Word Representations in Vector Space
+
+https://arxiv.org/abs/1301.3781
