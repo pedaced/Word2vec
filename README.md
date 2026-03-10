@@ -374,11 +374,11 @@ Example:
 ```
 Most similar words to "king":
 
-queen
+margrave
+maximilan
 prince
-monarch
 emperor
-throne
+pope
 ```
 
 Evaluation function:
